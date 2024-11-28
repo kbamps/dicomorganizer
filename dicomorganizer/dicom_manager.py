@@ -26,19 +26,131 @@ class DicomManager:
         "SeriesDescription", "StudyDescription"
     ]
 
-    def __init__(self, directory, tags=None):
+    def __init__(self, directory, tags=None, group_by=None, num_workers=None, *args, **kwargs):
         """
-        Initializes the DicomManager class.
+        Initializes the DicomManager class, which is used to manage DICOM files, 
+        extract metadata, and handle operations such as filtering and anonymization.
 
         Args:
-            directory (str): Path to the directory containing DICOM files.
-            tags (list, optional): List of DICOM tags to extract. Defaults to DEFAULT_DICOM_TAGS.
+            directory (str): 
+                Path to the directory containing DICOM files. The directory will be 
+                recursively searched for DICOM files (excluding 'DICOMDIR').
+            
+            tags (list, optional):
+                A list of DICOM tags to extract from each DICOM file. Defaults to 
+                `DEFAULT_DICOM_TAGS` if not provided. These tags define the metadata 
+                to be extracted from each file.
+            
+            group_by (str, optional):
+                Column name to group the resulting DataFrame by. This is an optional 
+                argument that can be specified when calling methods that return 
+                DataFrame results (e.g., `df_dicom`). If provided, the DataFrame will 
+                be grouped by the specified column.
+            
+            num_workers (int, optional):
+                The number of threads (workers) to use for parallel processing when 
+                extracting DICOM metadata or performing tasks like anonymization. If 
+                not provided, processing will be done sequentially.
+            
+            *args:
+                Additional positional arguments to pass to any methods that need them.
+            
+            **kwargs:
+                Additional keyword arguments to pass to any methods that need them. 
+                This includes options like `group_by` which can be passed dynamically.
+            
         """
+         
         self.directory = directory
         self.tags = tags or self.DEFAULT_DICOM_TAGS
+        self.num_workers = num_workers
+        self.group_by = group_by
+        self.args = args
+        self.kwargs = kwargs
         self._df_dicom = None  # Lazy-loaded DataFrame to store DICOM metadata.
+        
+        
+        
+    @property
+    def df_dicom(self):
+        """
+        Lazily loads and returns a pandas DataFrame containing DICOM metadata.
 
-    def get_dicom_info(self, group_by=None, num_workers=None):
+        Returns:
+            pd.DataFrame: DataFrame containing DICOM metadata.
+        """
+        num_workers = self.num_workers
+        group_by = self.groub_by
+        
+        if not hasattr(self, "_df_dicom") or self._df_dicom is None:
+            self._df_dicom = self._get_dicom_info(num_workers=num_workers, group_by=group_by)
+        return self._df_dicom
+    
+    
+    def filter(self, filter_func):
+        """
+        Filters the DICOM DataFrame based on a provided filter function.
+        
+        Args:
+            filter_func (function): A function that takes a row of the DataFrame and returns a boolean value.
+        
+            # Example filter function
+            def filter_by_modality(row):
+                return row['Modality'] == 'CT'
+        
+        Returns:
+            pd.DataFrame: Filtered DataFrame containing only the rows for which the filter function returned True.
+        """
+        if not callable(filter_func):
+            raise ValueError("The provided filter_func must be a callable function.")
+
+        # Apply the filter function to each row of the DataFrame
+        filtered_df = self.df_dicom[self.df_dicom.apply(filter_func, axis=1)]
+        return filtered_df
+    
+    
+    def anonymize_dicom(self, output_directory, clear_tags=None, num_workers=None):
+        """
+        Anonymizes the DICOM files by clearing the provided tags which are in the self.df_dicom.
+
+        Args:
+            output_directory (str): Path to save the anonymized files.
+            clear_tags (list): A list of tags to clear from the DICOM files. If None, uses the class's CLEAR_TAGS.
+            num_workers (int): Number of workers for parallel processing. If None, runs sequentially.
+            
+        Returns:
+            list: A list of file paths of the anonymized DICOM files.
+        """
+        clear_tags = clear_tags or self.CLEAR_TAGS  # Use the class's CLEAR_TAGS if no custom tags are provided
+        
+        assert os.path.exists(output_directory), f"Output directory '{output_directory}' does not exist."
+        assert output_directory != self.directory, "Output directory cannot be the same as the input directory."
+
+        # List to keep track of the anonymized files
+        anonymized_files = []
+        
+        # Get all DICOM file paths from the self.df_dicom DataFrame
+        dicom_paths = self.df_dicom['filename'].tolist()
+
+        # Prepare arguments for parallel tasks
+        args_list = [(path, clear_tags, output_directory) for path in dicom_paths]
+        
+        # Parallelize the anonymization task
+        if num_workers is None:
+            # Run sequentially if num_workers is not provided
+            for args in args_list:
+                result = self._anonymize_single_dicom(*args)
+                if result:
+                    anonymized_files.append(result)
+        else:
+            # Run in parallel if num_workers is specified
+            results = parallel_tasks(self._anonymize_single_dicom, args_list, num_workers, description="Anonymizing DICOM files")
+            anonymized_files.extend([r for r in results if r is not None])
+
+        return anonymized_files
+        
+
+    def _get_dicom_info(self, group_by=None, num_workers=None):
         """
         Reads all DICOM files in the directory and returns their metadata as a pandas DataFrame.
 
@@ -123,78 +235,6 @@ class DicomManager:
         dicom_info["filename"] = filepath
         return dicom_info
 
-    @property
-    def df_dicom(self):
-        """
-        Lazily loads and returns a pandas DataFrame containing DICOM metadata.
-
-        Returns:
-            pd.DataFrame: DataFrame containing DICOM metadata.
-        """
-        if not hasattr(self, "_df_dicom") or self._df_dicom is None:
-            self._df_dicom = self.get_dicom_info()
-        return self._df_dicom
-    
-    
-    def filter(self, filter_func):
-        """
-        Filters the DICOM DataFrame based on a provided filter function.
-        
-        Args:
-            filter_func (function): A function that takes a row of the DataFrame and returns a boolean value.
-        
-            # Example filter function
-            def filter_by_modality(row):
-                return row['Modality'] == 'CT'
-        
-        Returns:
-            pd.DataFrame: Filtered DataFrame containing only the rows for which the filter function returned True.
-        """
-        if not callable(filter_func):
-            raise ValueError("The provided filter_func must be a callable function.")
-
-        # Apply the filter function to each row of the DataFrame
-        filtered_df = self.df_dicom[self.df_dicom.apply(filter_func, axis=1)]
-        return filtered_df
-    
-    
-    def anonymize_dicom(self, output_directory, clear_tags=None, num_workers=None):
-        """
-        Anonymizes the DICOM files by clearing the provided tags which are in the self.df_dicom.
-
-        Args:
-            output_directory (str): Path to save the anonymized files. If None, overwrites the original files.
-            clear_tags (list): A list of tags to clear from the DICOM files. If None, uses the class's CLEAR_TAGS.
-            num_workers (int): Number of workers for parallel processing. If None, runs sequentially.
-            
-        Returns:
-            list: A list of file paths of the anonymized DICOM files.
-        """
-        clear_tags = clear_tags or self.CLEAR_TAGS  # Use the class's CLEAR_TAGS if no custom tags are provided
-
-        # List to keep track of the anonymized files
-        anonymized_files = []
-        
-        # Get all DICOM file paths from the self.df_dicom DataFrame
-        dicom_paths = self.df_dicom['filename'].tolist()
-
-        # Prepare arguments for parallel tasks
-        args_list = [(path, clear_tags, output_directory) for path in dicom_paths]
-        
-        # Parallelize the anonymization task
-        if num_workers is None:
-            # Run sequentially if num_workers is not provided
-            for args in args_list:
-                result = self._anonymize_single_dicom(*args)
-                if result:
-                    anonymized_files.append(result)
-        else:
-            # Run in parallel if num_workers is specified
-            results = parallel_tasks(self._anonymize_single_dicom, args_list, num_workers, description="Anonymizing DICOM files")
-            anonymized_files.extend([r for r in results if r is not None])
-
-        return anonymized_files
-    
     
     def _anonymize_single_dicom(self, dicom_path, clear_tags, output_directory):
         """
@@ -218,7 +258,7 @@ class DicomManager:
                     dicom_data[tag].value = ""
                 
             # Determine the output file path
-            output_path = output_directory or dicom_path
+            output_path = output_directory
             
             # Save the anonymized DICOM file
             dicom_data.save_as(output_path)
