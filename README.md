@@ -51,18 +51,7 @@ anonymized_files = dicom_manager.anonymize_dicom(output_dir)
 print(f"Anonymized {len(anonymized_files)} files.")`
 
 
-#5. Filter DICOM Files
-
-# Define a filter function
-def filter_ct_modality(row):
-    return row["Modality"] == "CT"
-
-# Apply the filter
-filtered_df = dicom_manager.filter(filter_ct_modality)
-print(filtered_df)
-
-
-# 6. Parallel Processing
+# 5. Parallel Processing
 
 dicom_manager = DicomManager(directory="path/to/dicom/folder", num_workers=4)
 
