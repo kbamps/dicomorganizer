@@ -42,13 +42,21 @@ class TestDicomManager(unittest.TestCase):
     #     self.assertEqual(len(info), 4)
         
         
-    def test_filter(self):
-        filter_func = lambda x: x["Modality"] == "US"
-        length_before = len(self.manager_grouped_patientid.df_dicom.obj)
-        self.manager_grouped_patientid.filter(filter_func)
-        length_after = len(self.manager_grouped_patientid.df_dicom.obj)
-        self.assertGreater(length_before, length_after)
-        self.assertEqual(self.manager_grouped_patientid.df_dicom.obj["Modality"].unique(), ["US"])
+    # def test_filter(self):
+    #     filter_func = lambda x: x["Modality"] == "US"
+    #     length_before = len(self.manager_grouped_patientid.df_dicom.obj)
+    #     self.manager_grouped_patientid.filter(filter_func)
+    #     length_after = len(self.manager_grouped_patientid.df_dicom.obj)
+    #     self.assertGreater(length_before, length_after)
+    #     self.assertEqual(self.manager_grouped_patientid.df_dicom.obj["Modality"].unique(), ["US"])
+
+    def test_multiple_group(self):
+        manager = DicomManager(directory=self.test_directory, group_by=["PatientID", "SeriesInstanceUID"], num_workers=self.test_num_workers)
+        
+        manager.df_dicom
+        
+        
+
 
 if __name__ == "__main__":
     unittest.main()

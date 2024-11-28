@@ -42,7 +42,7 @@ class DicomManager:
                 `DEFAULT_DICOM_TAGS` if not provided. These tags define the metadata 
                 to be extracted from each file.
             
-            group_by (str, optional):
+            group_by (str or list, optional):
                 Column name to group the resulting DataFrame by. This is an optional 
                 argument that can be specified when calling methods that return 
                 DataFrame results (e.g., `df_dicom`). If provided, the DataFrame will 
@@ -171,16 +171,24 @@ class DicomManager:
             pd.DataFrame or pd.core.groupby.DataFrameGroupBy: 
                 DataFrame containing DICOM metadata, optionally grouped by the specified column.
         """
+    
+        
         dicom_info = self._get_dicom_info_parallel(self.tags, num_workers)
         df_dicom = pd.DataFrame(dicom_info)
         
         if group_by is not None:
-            if group_by in df_dicom.columns:
-                return df_dicom.groupby(group_by)
-            else:
+            if not isinstance(group_by, list):
+                group_by = [group_by]
+            
+            # Check if group_by columns are present in DICOM metadata
+            col_check = [col in df_dicom.columns for col in group_by]
+            if not all(col_check):
+                error_message = ','.join([col_name for col_name, check in zip(group_by, col_check) if not check])
                 raise ValueError(
-                    f"Group by '{group_by}' not found in DICOM metadata. Available columns: {df_dicom.columns}"
-                )
+                        f"Group by '{error_message}' not found in DICOM metadata. Available columns: {df_dicom.columns}"
+                    )
+                
+            return df_dicom.groupby(group_by)
         
         return df_dicom
 
