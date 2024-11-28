@@ -16,7 +16,7 @@
 ## Quick Start
 
 ```python
-from dicom_manager import DicomManager
+from dicomorganizer import DicomManager
 
 # 1. Initialize the DicomManager
 directory = "/path/to/dicom/files"
