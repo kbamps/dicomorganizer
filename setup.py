@@ -9,12 +9,12 @@ setup(
     description="A package to manage, process, and anonymize DICOM files.",  
     long_description=open('README.md').read(), 
     long_description_content_type='text/markdown',  
-    url='https://gitlab.kuleuven.be/u0125842/dicomorganizer',  # Replace with your repo URL
+    url='https://gitlab.kuleuven.be/u0125842/dicomorganizer',  
     packages=find_packages(),  # Automatically find packages in your project
     install_requires=[
-        'tqdm',      # For progress bar functionality
-        "pydicom>=2.0.0",  # pydicom is required for DICOM file handling
-        "pandas>=1.0.0",  # pandas for DataFrame management
+        'tqdm',     
+        "pydicom>=2.0.0",  
+        "pandas>=1.0.0", 
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
