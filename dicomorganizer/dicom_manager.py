@@ -164,7 +164,7 @@ class DicomManager:
         Reads all DICOM files in the directory and returns their metadata as a pandas DataFrame.
 
         Args:
-            group_by (str, optional): Column name to group the data by. Defaults to None.
+            group_by (str, list, optional): Column name to group the data by. Defaults to None.
             num_workers (int, optional): Number of threads for parallel processing. Defaults to None.
 
         Returns:
