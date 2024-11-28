@@ -19,7 +19,7 @@ def parallel_tasks(function, arguments_list, num_workers=1, description="process
     Returns:
         list: A list of results from the parallel execution, in the same order as the input argument list.
     """
-    force_single_thread = force_single_thread or (sys.gettrace() is not None)
+    force_single_thread = force_single_thread
     disabled = not show_bar
     results_list = [None] * len(arguments_list)  # Preallocate the result list
     total_tasks = len(arguments_list)
@@ -27,7 +27,7 @@ def parallel_tasks(function, arguments_list, num_workers=1, description="process
     
     with tqdm(total=total_tasks, desc=description, unit="item", disable=disabled) as pbar:
         if not force_single_thread:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
                 futures = {executor.submit(function, *args): idx for idx, args in enumerate(arguments_list)}
                 
                 for future in concurrent.futures.as_completed(futures):

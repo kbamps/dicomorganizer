@@ -1,7 +1,8 @@
 import os
 import pandas as pd
 import pydicom
-from utils import parallel_tasks
+
+from dicomorganizer.utils import parallel_tasks
 
 class DicomManager:
     """
@@ -80,14 +81,14 @@ class DicomManager:
             pd.DataFrame: DataFrame containing DICOM metadata.
         """
         num_workers = self.num_workers
-        group_by = self.groub_by
+        group_by = self.group_by
         
-        if not hasattr(self, "_df_dicom") or self._df_dicom is None:
+        if self._df_dicom is None:
             self._df_dicom = self._get_dicom_info(num_workers=num_workers, group_by=group_by)
         return self._df_dicom
     
     
-    def filter(self, filter_func):
+    def filter(self, filter_func, inplace=False):
         """
         Filters the DICOM DataFrame based on a provided filter function.
         
@@ -103,10 +104,18 @@ class DicomManager:
         """
         if not callable(filter_func):
             raise ValueError("The provided filter_func must be a callable function.")
-
+        
+        #first ungroup the DataFrame if it is grouped
+        if isinstance(self._df_dicom, pd.core.groupby.DataFrameGroupBy):
+            df = self._df_dicom.obj
+        else:
+            df = self._df_dicom
+            
         # Apply the filter function to each row of the DataFrame
-        filtered_df = self.df_dicom[self.df_dicom.apply(filter_func, axis=1)]
-        return filtered_df
+        df_filtered = df[df.apply(filter_func, axis=1)]
+        
+        self._df_dicom = df_filtered.groupby(self.group_by) if self.group_by else df_filtered
+        return self._df_dicom
     
     
     def anonymize_dicom(self, output_directory, clear_tags=None, num_workers=None):
