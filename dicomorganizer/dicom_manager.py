@@ -106,7 +106,7 @@ class DicomManager:
             raise ValueError("The provided filter_func must be a callable function.")
         
         #first ungroup the DataFrame if it is grouped
-        if isinstance(self._df_dicom, pd.core.groupby.DataFrameGroupBy):
+        if isinstance(self.df_dicom, pd.core.groupby.DataFrameGroupBy):
             df = self._df_dicom.obj
         else:
             df = self._df_dicom
@@ -177,13 +177,11 @@ class DicomManager:
         df_dicom = pd.DataFrame(dicom_info)
         
         if group_by is not None:
-            if not isinstance(group_by, list):
-                group_by = [group_by]
-            
             # Check if group_by columns are present in DICOM metadata
-            col_check = [col in df_dicom.columns for col in group_by]
+            group_by_list = group_by if isinstance(group_by, list) else list([group_by])
+            col_check = [col in df_dicom.columns for col in group_by_list]
             if not all(col_check):
-                error_message = ','.join([col_name for col_name, check in zip(group_by, col_check) if not check])
+                error_message = ','.join([col_name for col_name, check in zip(group_by_list, col_check) if not check])
                 raise ValueError(
                         f"Group by '{error_message}' not found in DICOM metadata. Available columns: {df_dicom.columns}"
                     )
@@ -229,7 +227,7 @@ class DicomManager:
                 dicom_paths.append(os.path.join(root, file))
         return dicom_paths
 
-    def _get_single_dicom_info(self, filepath, tags):
+    def _get_single_dicom_info(self, filepath, tags, default_value=None):
         """
         Reads metadata for a single DICOM file.
 
@@ -248,7 +246,7 @@ class DicomManager:
         except Exception as e:
             return {'error': str(e)}
 
-        dicom_info = {tag: str(dicom_data.get(tag, "")) for tag in tags}
+        dicom_info = {tag: dicom_data.get(tag, default_value) for tag in tags}
         dicom_info["filename"] = filepath
         return dicom_info
 
