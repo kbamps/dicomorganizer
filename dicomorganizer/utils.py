@@ -1,4 +1,5 @@
 import concurrent.futures
+import re
 import sys
 from tqdm import tqdm
 import logging
@@ -48,3 +49,51 @@ def parallel_tasks(function, arguments_list, num_workers=1, description="process
                 pbar.update(1)
 
     return results_list
+
+
+def replace_invalid_characters(filename):
+    invalid_characters = '<>:"/\|?*'
+    reserved_words = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9']
+
+    # Replace invalid characters with an underscore
+    for char in invalid_characters:
+        filename = filename.replace(char, '_')
+
+    # Check if filename is a reserved word
+    if filename.upper() in reserved_words:
+        filename += '_'
+
+    # Remove leading and trailing periods and spaces
+    filename = filename.strip('.')
+    filename = filename.strip()
+
+    return filename
+
+
+def extract_format(format_file, dict_format=None):
+        pattern = r'\$([^$]+)\$'
+        placeholders = re.findall(pattern, format_file)
+        
+        # Extract DICOM tag values
+        # tag_values = {placeholder: dict_format.get(placeholder, '') for placeholder in placeholders}
+        
+        # Replace placeholders in output_format with actual tag values
+        output_file = format_file
+        for placeholder in placeholders:
+            if '?' in placeholder:
+                conditional_tags = placeholder.split('?')
+                for ct in conditional_tags:
+                    value = dict_format.get(ct, 'UNKNOWN')
+                    if value != 'UNKNOWN':
+                        break
+                
+
+            else:
+                value = dict_format.get(placeholder, 'UNKNOWN')
+                
+            placeholder_str = f"${placeholder}$"
+
+            output_file = output_file.replace(placeholder_str, replace_invalid_characters(str(value)))
+        
+        output_file = output_file.replace(" ", "_")
+        return output_file

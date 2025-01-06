@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pydicom
 
-from dicomorganizer.utils import parallel_tasks
+from dicomorganizer.utils import extract_format, parallel_tasks
 
 class DicomManager:
     """
@@ -18,7 +18,7 @@ class DicomManager:
     DEFAULT_DICOM_TAGS = [
         "PatientName", "PatientID", "StudyID", "StudyDate", 
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
-        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID"
+        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription"
     ]
     
     CLEAR_TAGS = [
@@ -118,7 +118,7 @@ class DicomManager:
         return self._df_dicom
     
     
-    def anonymize_dicom(self, output_directory, clear_tags=None, num_workers=None):
+    def anonymize_dicom(self, output_directory, clear_tags=None, num_workers=None, identifiers=None):
         """
         Anonymizes the DICOM files by clearing the provided tags which are in the self.df_dicom.
 
@@ -138,11 +138,13 @@ class DicomManager:
         # List to keep track of the anonymized files
         anonymized_files = []
         
+        
+        
         # Get all DICOM file paths from the self.df_dicom DataFrame
         dicom_paths = self.df_dicom['filename'].tolist()
 
         # Prepare arguments for parallel tasks
-        args_list = [(path, clear_tags, output_directory) for path in dicom_paths]
+        args_list = [(path, clear_tags, output_directory, identifiers) for path in dicom_paths]
         
         # Parallelize the anonymization task
         if num_workers is None:
@@ -245,7 +247,7 @@ class DicomManager:
         return dicom_info
 
     
-    def _anonymize_single_dicom(self, dicom_path, clear_tags, output_directory):
+    def _anonymize_single_dicom(self, dicom_path, clear_tags, output_directory, identifiers=None):
         """
         Anonymizes a single DICOM file by clearing specified tags.
 
@@ -253,6 +255,9 @@ class DicomManager:
             dicom_path (str): Path to the DICOM file to anonymize.
             clear_tags (list): List of tags to clear.
             output_directory (str): Directory to save the anonymized file.
+            identifiers (dict, optional): A dictionary mapping patient IDs (keys) to anonymized IDs (values). 
+                                      If provided, the function replaces the PatientID and PatientName 
+                                      in the DICOM file with the corresponding anonymized ID.
 
         Returns:
             str: Path to the anonymized DICOM file, or None if the process fails.
@@ -260,17 +265,28 @@ class DicomManager:
         try:
             # Read the DICOM file
             dicom_data = pydicom.dcmread(dicom_path)
+            
+            # Get the patient ID 
+            patient_id = dicom_data.PatientID
 
             # Clear specified tags
             for tag in clear_tags:
                 if tag in dicom_data:
                     dicom_data[tag].value = ""
-                
-            # Determine the output file path
-            output_path = output_directory
             
+            # Anonymize the patient name and ID
+            if identifiers is not None:
+                if patient_id in identifiers:
+                    anonymized_id = identifiers[patient_id]
+                    dicom_data.PatientName = anonymized_id
+                    dicom_data.PatientID = anonymized_id  
+             
+            # Determine the output file path
+            output_path = extract_format(os.path.join(output_directory, "$PatientID$/$StudyDate$/$SeriesDescription$"), dicom_data)
+            os.makedirs(output_path, exist_ok=True)
+                        
             # Save the anonymized DICOM file
-            dicom_data.save_as(output_path)
+            dicom_data.save_as(os.path.join(output_path, os.path.basename(dicom_path)))
             
             return output_path
         except Exception as e:
