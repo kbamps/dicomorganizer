@@ -13,13 +13,28 @@ def main():
     # Setup argument parser
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
         description=f"""
-        Anonymize DICOM series by replacing patient names with identifier and saving the results in an output directory.
-        
-        Example usage:
-        ###########
+        Anonymize and manage DICOM series files.
 
-        This will anonymize all DICOM files in the '/path/to/input/' directory, save the anonymized
-        files to '/path/to/output/', and use 4 parallel workers to speed up the processing.
+        This tool allows you to anonymize a series of DICOM files by removing or replacing sensitive metadata fields 
+        (tags) while maintaining the integrity of the dataset. The processed files are saved to a specified output 
+        directory, with support for parallel processing to handle large datasets efficiently.
+
+        Key Features:
+        - Remove sensitive DICOM tags specified in a text file.
+        - Replace patient identifiers with unique anonymized identifiers from a CSV file.
+        - Utilize multiple workers for faster processing.
+
+        Example Usage:
+        ###############
+
+        Basic usage to anonymize a dataset:
+        DICOMAnonymizer.exe /path/to/input/ /path/to/output/ /path/to/tags.txt 
+
+        Usage with an identifier CSV file and custom log directory:
+        DICOMAnonymizer.exe /path/to/input/ /path/to/output/ /path/to/tags.txt \\
+            --identifier_list_csv /path/to/identifiers.csv \\
+            --num_workers 4 \\
+            --logdir /path/to/logs/
 
         Version: {__VERSION__}
         """
@@ -30,22 +45,25 @@ def main():
     parser.add_argument('drop_tags_txt', type=str, help="Path to the text file containing DICOM tags to drop.")
     parser.add_argument('--identifier_list_csv', type=str, help="Path to the csv file containing identifiers.", required=False, default=None)
     parser.add_argument('--num_workers', type=int, default=2, help="Number of workers for parallel processing. (default: 2)")
+    parser.add_argument('--logdir', type=str, default=None, help="Path to the directory where log files will be saved. (default: script directory)")
     
-    # # Show help if no arguments are provided
-    # if len(sys.argv) == 1:
-    #     parser.print_help(sys.stderr)
-    #     sys.exit(1)
 
-    # Initialize logging
-    logger = log_config.setup_logging()
-    
-    args = parser.parse_args('/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/uzl/DicomOrganizer/tests/data/cli_app/DICOM /DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/uzl/DicomOrganizer/tests/data/cli_app/out_test tests/data/cli_app/tags.txt --identifier_list_csv tests/data/cli_app/identifier.csv  --num_workers 2'.split())
-    
+    try:
+        args = parser.parse_args() # '/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/uzl/DicomOrganizer/tests/data/cli_app/DICOM /DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/uzl/DicomOrganizer/tests/data/cli_app/out_test tests/data/cli_app/tags.txt --identifier_list_csv tests/data/cli_app/identifier.csv  --num_workers 2'.split() if (sys.gettrace() is not None) else [])
+    except SystemExit:
+        print("\n")
+        parser.print_help()
+        sys.exit(1)
+        
     input_path = args.input_path
     output_path = args.output_path
     drop_tags_txt = args.drop_tags_txt
     identifier_list_csv = args.identifier_list_csv
     num_workers = args.num_workers
+    log_dir = args.logdir
+    
+    # Initialize logging
+    logger = log_config.setup_logging(log_dir)
     
     # check if input path exists
     if not os.path.exists(input_path):
@@ -53,9 +71,10 @@ def main():
         sys.exit(1)
     
     # Check that output path is either empty or does not exist
-    # if os.path.exists(output_path) and len(os.listdir(args.output_path)) == 0:
-    #     logger.error(f"Output path '{output_path}' is not empty.")
-    #     sys.exit(1)
+    if os.path.exists(output_path): 
+        if len(os.listdir(args.output_path)) != 0:
+            logger.error(f"Output path '{output_path}' is not empty.")
+            sys.exit(1)
     else:
         os.makedirs(output_path, exist_ok=True)
     
@@ -78,6 +97,8 @@ def main():
     logger.info(f"Output path: {output_path}")
     logger.info(f"Drop tags file: {drop_tags_txt}")
     logger.info(f"Number of workers: {num_workers}")
+    logger.info(f"Identifier list file: {identifier_list_csv}")
+    logger.info(f"Log directory: {log_dir}")
     
     # Start the anonymization process
     logger.info("Starting anonymization process...")

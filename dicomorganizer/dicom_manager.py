@@ -1,3 +1,4 @@
+import logging
 import os
 import pandas as pd
 import pydicom
@@ -138,9 +139,14 @@ class DicomManager:
         # List to keep track of the anonymized files
         anonymized_files = []
         
+        #first ungroup the DataFrame if it is grouped
+        if isinstance(self.df_dicom, pd.core.groupby.DataFrameGroupBy):
+            df = self.df_dicom.obj
+        else:
+            df = self.df_dicom
         
         # Get all DICOM file paths from the self.df_dicom DataFrame
-        dicom_paths = self.df_dicom['filename'].tolist()
+        dicom_paths = df['filename'].tolist()
 
         # Prepare arguments for parallel tasks
         args_list = [(path, clear_tags, output_directory, identifiers) for path in dicom_paths]
@@ -291,5 +297,9 @@ class DicomManager:
             
             return output_path
         except Exception as e:
-            print(f"Failed to anonymize {dicom_path}:\n => {e}")
+            if logging.getLogger().hasHandlers():
+                logger = logging.getLogger()
+                logger.error(f"Failed to anonymize {dicom_path}:\n => {e}")
+            else:
+                print(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None

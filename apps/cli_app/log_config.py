@@ -3,15 +3,16 @@ import os
 import sys
 from datetime import datetime
 
-def setup_logging():
+def setup_logging(log_directory=None):
     # Check if logging is already configured
     if logging.getLogger().hasHandlers():
         return logging.getLogger()  # Return the existing logger
 
-    if getattr(sys, 'frozen', False):  # Check if the app is run as a frozen executable
-        log_directory = os.path.dirname(sys.executable)  # Get the directory of the executable
-    else:
-        log_directory = os.path.dirname(sys.argv[0])  # Get the directory of the executable script
+    if log_directory is None:
+        if getattr(sys, 'frozen', False):  # Check if the app is run as a frozen executable
+            log_directory = os.path.dirname(sys.executable)  # Get the directory of the executable
+        else:
+            log_directory = os.path.dirname(sys.argv[0])  # Get the directory of the executable script
     
     log_directory = os.path.join(log_directory, "logs")  # Create a 'logs' directory in the script directory
     os.makedirs(log_directory, exist_ok=True)  # Create the directory if it doesn't exist
