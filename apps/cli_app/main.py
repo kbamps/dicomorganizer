@@ -104,7 +104,7 @@ def main():
     drop_tags = processed_drop_tags
     
     tags = DicomManager.DEFAULT_DICOM_TAGS + drop_tags
-    manager = DicomManager(input_path, tags=tags, num_workers=num_workers, group_by="SeriesInstanceUID")
+    manager = DicomManager(input_path, tags=tags, num_workers=num_workers)
     
     # Anonymize the DICOM files
     result = manager.anonymize_dicom(output_path, clear_tags=drop_tags, num_workers=num_workers, identifiers=identifiers)

@@ -139,7 +139,6 @@ class DicomManager:
         anonymized_files = []
         
         
-        
         # Get all DICOM file paths from the self.df_dicom DataFrame
         dicom_paths = self.df_dicom['filename'].tolist()
 
@@ -279,7 +278,9 @@ class DicomManager:
                 if patient_id in identifiers:
                     anonymized_id = identifiers[patient_id]
                     dicom_data.PatientName = anonymized_id
-                    dicom_data.PatientID = anonymized_id  
+                    dicom_data.PatientID = anonymized_id 
+                else:
+                    raise KeyError(f"Patient ID '{patient_id}' not found in the provided identifiers.")
              
             # Determine the output file path
             output_path = extract_format(os.path.join(output_directory, "$PatientID$/$StudyDate$/$SeriesDescription$"), dicom_data)
@@ -290,5 +291,5 @@ class DicomManager:
             
             return output_path
         except Exception as e:
-            print(f"Failed to anonymize {dicom_path}: {e}")
+            print(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None

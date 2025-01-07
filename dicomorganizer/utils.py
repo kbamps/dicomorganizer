@@ -83,17 +83,24 @@ def extract_format(format_file, dict_format=None):
             if '?' in placeholder:
                 conditional_tags = placeholder.split('?')
                 for ct in conditional_tags:
-                    value = dict_format.get(ct, 'UNKNOWN')
-                    if value != 'UNKNOWN':
+                    value = dict_format.get(ct, None)
+                    if value is not None:
                         break
                 
 
             else:
-                value = dict_format.get(placeholder, 'UNKNOWN')
+                value = dict_format.get(placeholder, None)
+            
+            
+            if value is None:
+                raise ValueError(f"Placeholder '{placeholder}' not found in dictionary. Pattern: {format_file}")
+            
+            if value == "":
+                raise ValueError(f"Placeholder '{placeholder}' has an empty value. Pattern: {format_file}")
                 
             placeholder_str = f"${placeholder}$"
-
             output_file = output_file.replace(placeholder_str, replace_invalid_characters(str(value)))
+            
         
         output_file = output_file.replace(" ", "_")
         return output_file

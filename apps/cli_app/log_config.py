@@ -21,7 +21,7 @@ def setup_logging():
     log_filename = os.path.join(log_directory, f"dicom_anonymization_{timestamp}.log")
 
     # Configure logging
-    handlers = [logging.FileHandler(log_filename), logging.StreamHandler(sys.stdout)] if (sys.gettrace() is not None) else [logging.FileHandler(log_filename)]
+    handlers = [logging.FileHandler(log_filename), logging.StreamHandler(sys.stdout)] #if (sys.gettrace() is not None) else [logging.FileHandler(log_filename)]
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s - [File: %(filename)s, Line: %(lineno)d]',
