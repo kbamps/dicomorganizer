@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "dicomorganizer"
-version = "0.4.0" 
+version = "0.4.1" 
 description = "A package to manage, process, and anonymize DICOM files."
 readme = "README.md"
 authors = [{name = "Kobe Bamps", email = "kobe.bamps@uzleuven.be"}]
@@ -19,6 +19,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/kbamps/dicomorganizer"
 
-[dependencies]
-pydicom = ">=2.0.0"
-tqdm = "4.67.1"
+
+[tool.setuptools.packages]
+find = {}
