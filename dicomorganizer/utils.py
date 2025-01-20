@@ -28,7 +28,7 @@ def parallel_tasks(function, arguments_list, num_workers=1, description="process
     
     with tqdm(total=total_tasks, desc=description, unit="item", disable=disabled) as pbar:
         if not force_single_thread:
-            with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
                 futures = {executor.submit(function, *args): idx for idx, args in enumerate(arguments_list)}
                 
                 for future in concurrent.futures.as_completed(futures):
@@ -104,3 +104,8 @@ def extract_format(format_file, dict_format=None):
         
         output_file = output_file.replace(" ", "_")
         return output_file
+
+
+if __name__ == '__main__':
+    pass
+

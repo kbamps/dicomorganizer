@@ -106,7 +106,7 @@ def main():
     # load the identifiers
     identifiers = {}
     with open(identifier_list_csv, 'r') as f:
-        reader = csv.reader(f)
+        reader = csv.reader(f, delimiter=";")
         for row in reader:
             identifiers[row[0]] = row[1]
     
