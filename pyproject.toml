@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dicomorganizer"
-version = "0.4.2" 
+version = "0.4.3" 
 description = "A package to manage, process, and anonymize DICOM files."
 readme = "README.md"
 authors = [{name = "Kobe Bamps", email = "kobe.bamps@uzleuven.be"}]
@@ -19,6 +19,5 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/kbamps/dicomorganizer"
 
-
 [tool.setuptools.packages]
-find = {}
+find = {where = ["dicomorganizer"]}
