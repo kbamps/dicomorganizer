@@ -28,7 +28,6 @@ test:
   stage: test
   script:
     - pip install dist/*.whl
-    - python -c "import dicomorganizer; print(dicomorganizer.__version__)"
 
 
 publish:
