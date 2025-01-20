@@ -4,7 +4,7 @@ stages:
 build-package:
   stage: build
   only:
-    - tags
+    - master
   script:
     - python3 -m pip install --upgrade build
     - python3 -m build
