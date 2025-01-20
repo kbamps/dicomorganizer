@@ -5,6 +5,7 @@ build-package:
   stage: build
   only:
     - master
+  image: python:3.9 
   script:
     - python3 -m pip install --upgrade build
     - python3 -m build
