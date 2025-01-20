@@ -309,3 +309,8 @@ class DicomManager:
             else:
                 print(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None
+
+
+
+if __name__ == '__main__':
+    pass
