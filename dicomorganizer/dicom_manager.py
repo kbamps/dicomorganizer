@@ -1,9 +1,13 @@
 import logging
 import os
+import shutil
 import pandas as pd
 import pydicom
+from dicom2nifti.convert_dicom import dicom_array_to_nifti
+
 
 from dicomorganizer.utils import extract_format, parallel_tasks
+import tqdm
 
 class DicomManager:
     """
@@ -309,6 +313,62 @@ class DicomManager:
             else:
                 print(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None
+        
+    
+    def export_to_folder_structure(self, output_path):
+        """
+        Exports the DICOM files to a folder structure based on the metadata.
+
+        Args:
+            output_path (str): Path to the directory where the files will be exported.
+        """
+        # Check if the output directory exists
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
+
+        # Group the DICOM files by the specified column
+        if isinstance(self.df_dicom, pd.core.groupby.DataFrameGroupBy):
+            for group, df_group in self.df_dicom:
+                for idx, row in df_group.iterrows():
+                    dicom_path = row['filename']
+                    dicom_data = row.to_dict()
+                    output_path = extract_format(output_path, dicom_data)
+                    name = os.path.basename(dicom_path)
+                    output_file = os.path.join(output_path, name)
+                    os.makedirs(output_path, exist_ok=True)
+                    shutil.copy(dicom_path, output_file)                    
+        else:
+            for idx, row in self.df_dicom.iterrows():
+                dicom_path = row['filename']
+                dicom_data = row.to_dict()
+                output_path = extract_format(output_path, dicom_data)
+                name = os.path.basename(dicom_path)
+                output_file = os.path.join(output_path, name)
+                os.makedirs(output_path, exist_ok=True)
+                shutil.copy(dicom_path, output_file)   
+
+
+    def export_to_nifti(self, output_path):
+        """
+        Exports the DICOM files to NIFTI format.
+        Args:
+            output_path (str): Path to the directory where the files will be exported.
+        """
+        if not isinstance(self.df_dicom, pd.core.groupby.DataFrameGroupBy):
+            raise ValueError("Cannot export to NIFTI format without grouping the DICOM files.")
+        
+        converted_files =  []
+        
+        for group, df_group in tqdm.tqdm(self.df_dicom, desc="Converting DICOMs to NIFTI"):
+            dicom_data = df_group.to_dict()
+            dicom_array = [pydicom.dcmread(dicom_path) for dicom_path in df_group['filename'].tolist()]
+            output_path = extract_format(output_path, dicom_data)
+            os.makedirs(output_path, exist_ok=True)
+            output_file = os.path.join(output_path, f"{df_group['SeriesDescription'][0]}.nii.gz")
+            convert_result = dicom_array_to_nifti(dicom_array, output_file)
+            converted_files.append(convert_result["NII_FILE"])
+
+        return converted_files
 
 
 
