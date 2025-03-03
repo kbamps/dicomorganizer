@@ -1,9 +1,16 @@
 import logging
 import os
+import shutil
+import sys
+import uuid
+import dicom2nifti
 import pandas as pd
 import pydicom
+from dicom2nifti.convert_dicom import dicom_array_to_nifti
+import pickle
 
 from dicomorganizer.utils import extract_format, parallel_tasks
+import tqdm
 
 class DicomManager:
     """
@@ -19,7 +26,7 @@ class DicomManager:
     DEFAULT_DICOM_TAGS = [
         "PatientName", "PatientID", "StudyID", "StudyDate", 
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
-        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription"
+        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber"
     ]
     
     CLEAR_TAGS = [
@@ -309,8 +316,94 @@ class DicomManager:
             else:
                 print(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None
+        
+    
+    def export_to_folder_structure(self, output_path):
+        """
+        Exports the DICOM files to a folder structure based on the metadata.
+
+        Args:
+            output_path (str): Path to the directory where the files will be exported.
+        """
+        print(len(self.df_dicom))
+        paths = []
+        failed_files = []
+
+        for idx, row in self.df_dicom.obj.iterrows():
+            try:
+                dicom_path = row['filename']
+                dicom_data = row.to_dict()
+                output_path_formatted = extract_format(output_path, dicom_data)
+                name = os.path.basename(dicom_path) #f"{uuid.uuid4()}.dcm" 
+                output_file = os.path.join(output_path_formatted, name)
+                os.makedirs(output_path_formatted, exist_ok=True)
+                # print(f"Copying {dicom_path} to {output_file}")
+                shutil.copy(dicom_path, output_file)   
+                paths.append(output_file)
+            except Exception as e:
+                failed_files.append((e,dicom_path))
+                print(f"Failed to export {dicom_path}:\n => {e}")
+
+        return paths
 
 
+    def export_to_nifti(self, output_path, folder_exists=False):
+        """
+        Exports the DICOM files to NIFTI format.
+        Args:
+            output_path (str): Path to the directory where the files will be exported.
+        """
+        if not isinstance(self.df_dicom, pd.core.groupby.DataFrameGroupBy):
+            raise ValueError("Cannot export to NIFTI format without grouping the DICOM files.")
+        
+        converted_files =  []
+        
+        for group, df_group in tqdm.tqdm(self.df_dicom, desc="Converting DICOMs to NIFTI"):
+            try:
+                dicom_data = df_group.iloc[0].to_dict()
+                read_path_format = extract_format(output_path + "/DCM", dicom_data)
+                output_path_format = extract_format(output_path, dicom_data)
+                output_file = os.path.join(output_path_format, f"image.nii.gz")
+
+                if folder_exists:
+                    convert_result = dicom2nifti.dicom_series_to_nifti(read_path_format, output_file)
+                else:
+                    dicom_array = [pydicom.dcmread(dicom_path) for dicom_path in df_group['filename'].tolist()]
+                    convert_result = dicom_array_to_nifti(dicom_array, output_file)
+                
+                converted_files.append(convert_result["NII_FILE"])
+                    
+            except Exception as e:
+                print(f"Failed to convert DICOMs to NIFTI:\n => {e}")
+
+        return converted_files
+
+    def save(self, output_path):
+        """
+        Saves the complete DicomManager model to a pickle file.
+
+        Args:
+            output_path (str): Path to the output pickle file.
+        """
+        with open(output_path, 'wb') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(input_path):
+        """
+        Loads the complete DicomManager model from a pickle file.
+
+        Args:
+            input_path (str): Path to the input pickle file.
+
+        Returns:
+            DicomManager: The loaded DicomManager instance.
+        """
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"The file '{input_path}' does not exist.")
+        
+        with open(input_path, 'rb') as f:
+            return pickle.load(f)
 
 if __name__ == '__main__':
     pass
