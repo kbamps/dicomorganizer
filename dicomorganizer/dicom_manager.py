@@ -4,11 +4,12 @@ import shutil
 import sys
 import uuid
 import dicom2nifti
+import numpy as np
 import pandas as pd
 import pydicom
 from dicom2nifti.convert_dicom import dicom_array_to_nifti
 import pickle
-
+import nibabel as nib
 from dicomorganizer.utils import extract_format, parallel_tasks
 import tqdm
 
@@ -24,7 +25,7 @@ class DicomManager:
     """
 
     DEFAULT_DICOM_TAGS = [
-        "PatientName", "PatientID", "StudyID", "StudyDate", 
+        "PatientName", "PatientID", "StudyID", "StudyDate", "StudyDescription", "AcquisitionDate","ProtocolName",
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
         "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber"
     ]
@@ -366,10 +367,19 @@ class DicomManager:
                 output_file = os.path.join(output_path_format, f"image.nii.gz")
 
                 if folder_exists:
-                    convert_result = dicom2nifti.dicom_series_to_nifti(read_path_format, output_file)
+                    convert_result = dicom2nifti.dicom_series_to_nifti(read_path_format, output_file, reorient_nifti=False)
                 else:
                     dicom_array = [pydicom.dcmread(dicom_path) for dicom_path in df_group['filename'].tolist()]
-                    convert_result = dicom_array_to_nifti(dicom_array, output_file)
+                    convert_result = dicom_array_to_nifti(dicom_array, output_file, reorient_nifti=False)
+                
+                
+                # swap axes 
+                # if convert_result is not None:
+                #     nii = np.transpose(convert_result['NII'].get_fdata(), (1,2,3,0))
+                #     affine = convert_result['NII'].affine
+                #     convert_result['NII'] = nib.Nifti1Image(nii, affine)
+                #     nib.save(convert_result['NII'], output_file)
+                
                 
                 converted_files.append(convert_result["NII_FILE"])
                     
