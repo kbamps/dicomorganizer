@@ -361,11 +361,12 @@ class DicomManager:
         for group, df_group in tqdm.tqdm(self.df_dicom, desc="Converting DICOMs to NIFTI"):
             try:
                 dicom_data = df_group.iloc[0].to_dict()
-                output_path_format = extract_format(output_path + "/DCM", dicom_data)
+                read_path_format = extract_format(output_path + "/DCM", dicom_data)
+                output_path_format = extract_format(output_path, dicom_data)
                 output_file = os.path.join(output_path_format, f"image.nii.gz")
 
                 if folder_exists:
-                    convert_result = dicom2nifti.dicom_series_to_nifti(output_path_format, output_file)
+                    convert_result = dicom2nifti.dicom_series_to_nifti(read_path_format, output_file)
                 else:
                     dicom_array = [pydicom.dcmread(dicom_path) for dicom_path in df_group['filename'].tolist()]
                     convert_result = dicom_array_to_nifti(dicom_array, output_file)
