@@ -2,6 +2,7 @@ import argparse
 import csv
 import os
 import sys
+import re
 from apps.cli.utils import log_config
 from dicomorganizer import DicomManager
 from pydicom.datadict import tag_for_keyword, keyword_for_tag
@@ -12,7 +13,10 @@ def validate_filters(filters):
         if '=' not in filter:
             raise ValueError(f"Filter '{filter}' is not in the correct format key=value.")
         key, value = filter.split('=', 1)
-        valid_filters[key] = value
+        try:
+            valid_filters[key] = re.compile(value)
+        except re.error as e:
+            raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
     return valid_filters
 
 def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None):
@@ -22,13 +26,13 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
     # Debug: Print arguments if verbose mode is on
     if verbose:
         logger.info("Arguments Received:")
-        logger.info(f"  Input Directory: {input_dir}")
-        logger.info(f"  Output Directory: {output_dir}")
-        logger.info(f"  Group by: {groupby}")
-        logger.info(f"  Anonymize: {anonymize}")
-        logger.info(f"  Verbose Mode: {verbose}")
-        logger.info(f"  Number of Workers: {num_workers}")
-        logger.info(f"  Filters: {filters}")
+        logger.info(f"      Input Directory: {input_dir}")
+        logger.info(f"      Output Directory: {output_dir}")
+        logger.info(f"      Group by: {groupby}")
+        logger.info(f"      Anonymize: {anonymize}")
+        logger.info(f"      Verbose Mode: {verbose}")
+        logger.info(f"      Number of Workers: {num_workers}")
+        logger.info(f"      Filters: {filters}")
 
     # Validate filters
     try:
@@ -46,14 +50,6 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
     if groupby not in DicomManager.DEFAULT_DICOM_TAGS:
         logger.error(f"Group by parameter '{groupby}' is not a valid tag.\nValid tags are: {DicomManager.DEFAULT_DICOM_TAGS}")
         return
-    
-    # Check that output path is either empty or does not exist
-    if os.path.exists(output_dir): 
-        if len(os.listdir(output_dir)) != 0:
-            logger.error(f"Output path '{output_dir}' is not empty.")
-            return
-    else:
-        os.makedirs(output_dir, exist_ok=True)
 
     # Start the DICOM organization process
     logger.info("Starting DICOM organization process...")
@@ -62,18 +58,24 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
     # Apply filters
     if filters:
         def filter_by(row):
-            for key, value in filters.items():
-                if value not in row.get(key, ''):
-                    return False
+            for key, regex in filters.items():
+                value = row.get(key, None)  # Get value, default to empty string
+            
+                if  value is None:  # If value is None or empty string
+                    return False  
+                
+                if not regex.search(value):  # If regex does NOT match
+                    return False  # Row does not match filter criteria
+
             return True
         
         manager.filter(filter_by)
     
     # Organize the DICOM files
-    manager.export_to_folder_structure(output_dir)
+    manager.export_to_folder_structure(output_dir + "/DCM")
 
     # transform to nifti 
-    manager.export_to_nifti(output_dir)
+    manager.export_to_nifti(output_dir, folder_exists=True)
 
 
 def main():
