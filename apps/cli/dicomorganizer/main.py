@@ -6,6 +6,7 @@ import re
 from apps.cli.utils import log_config
 from dicomorganizer import DicomManager
 from pydicom.datadict import tag_for_keyword, keyword_for_tag
+import json
 
 def validate_filters(filters):
     valid_filters = {}
@@ -19,7 +20,7 @@ def validate_filters(filters):
             raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
     return valid_filters
 
-def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None):
+def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1,save_output_json=False, filters=None):
     # Initialize logging
     logger = log_config.setup_logging(log_dir)
 
@@ -32,6 +33,7 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
         logger.info(f"      Anonymize: {anonymize}")
         logger.info(f"      Verbose Mode: {verbose}")
         logger.info(f"      Number of Workers: {num_workers}")
+        logger.info(f"      Save Output JSON: {save_output_json}")
         logger.info(f"      Filters: {filters}")
 
     # Validate filters
@@ -72,12 +74,20 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
         manager.filter(filter_by)
     
     # Organize the DICOM files
-    manager.export_to_folder_structure(output_dir + "/DCM")
+    dict_results_folder_export = manager.export_to_folder_structure(output_dir + "/DCM")
 
     # transform to nifti 
-    manager.export_to_nifti(output_dir, folder_exists=True)
-
-
+    dict_results_nii_export = manager.export_to_nifti(output_dir, folder_exists=True)
+    
+    if save_output_json:
+        json_output_path = os.path.join(output_dir, "output_results.json")
+        with open(json_output_path, 'w') as json_file:
+            json.dump({
+                "folder_export": dict_results_folder_export,
+                "nii_export": dict_results_nii_export
+            }, json_file, indent=4)
+        logger.info(f"Output results saved to {json_output_path}")
+    
 def main():
     # Setup argument parser
     parser = argparse.ArgumentParser(
@@ -140,6 +150,13 @@ def main():
         default=1, 
         help="Number of workers for processing (default: 1)."
     )
+    
+    parser.add_argument(
+        "--save_output_json",
+        action="store_true",
+        help="Save the output as a JSON"
+    )
+    
     parser.add_argument(
         "--filters", 
         nargs='*', 
@@ -156,6 +173,7 @@ def main():
         verbose=args.verbose,
         log_dir=args.log_dir,
         num_workers=args.num_workers,
+        save_output_json=args.save_output_json,
         filters=args.filters
     )
 
