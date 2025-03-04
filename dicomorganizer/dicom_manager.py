@@ -340,12 +340,13 @@ class DicomManager:
                 os.makedirs(output_path_formatted, exist_ok=True)
                 # print(f"Copying {dicom_path} to {output_file}")
                 shutil.copy(dicom_path, output_file)   
-                paths.append(output_file)
+                dicom_data['filename'] = output_file
+                paths.append(dicom_data)
             except Exception as e:
                 failed_files.append((e,dicom_path))
                 print(f"Failed to export {dicom_path}:\n => {e}")
 
-        return paths
+        return {'succeeded': paths, 'failed': failed_files}
 
 
     def export_to_nifti(self, output_path, folder_exists=False):
@@ -358,6 +359,7 @@ class DicomManager:
             raise ValueError("Cannot export to NIFTI format without grouping the DICOM files.")
         
         converted_files =  []
+        failed_files = []
         
         for group, df_group in tqdm.tqdm(self.df_dicom, desc="Converting DICOMs to NIFTI"):
             try:
@@ -380,13 +382,15 @@ class DicomManager:
                 #     convert_result['NII'] = nib.Nifti1Image(nii, affine)
                 #     nib.save(convert_result['NII'], output_file)
                 
-                
-                converted_files.append(convert_result["NII_FILE"])
+                dicom_data['nii_path'] = convert_result["NII_FILE"]
+                dicom_data.pop('filename', None)
+                converted_files.append(dicom_data)
                     
             except Exception as e:
                 print(f"Failed to convert DICOMs to NIFTI:\n => {e}")
+                failed_files.append((e, group))
 
-        return converted_files
+        return {'succeeded': converted_files, 'failed': failed_files}
 
     def save(self, output_path):
         """
