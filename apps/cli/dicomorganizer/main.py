@@ -1,8 +1,10 @@
 import argparse
 import csv
 import os
+from pathlib import Path
 import sys
 import re
+from turtle import pd
 from apps.cli.utils import log_config
 from dicomorganizer import DicomManager
 from pydicom.datadict import tag_for_keyword, keyword_for_tag
@@ -20,7 +22,7 @@ def validate_filters(filters):
             raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
     return valid_filters
 
-def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1,save_output_json=False, filters=None):
+def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, save_output_json=False, filters=None, save_csv=False):
     # Initialize logging
     logger = log_config.setup_logging(log_dir)
 
@@ -34,6 +36,7 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
         logger.info(f"      Verbose Mode: {verbose}")
         logger.info(f"      Number of Workers: {num_workers}")
         logger.info(f"      Save Output JSON: {save_output_json}")
+        logger.info(f"      Save CSV: {save_csv}")
         logger.info(f"      Filters: {filters}")
 
     # Validate filters
@@ -87,6 +90,53 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
                 "nii_export": dict_results_nii_export
             }, json_file, indent=4)
         logger.info(f"Output results saved to {json_output_path}")
+        
+    if save_csv:
+        # Define the headers
+        headers = [
+            "id", "patient_name", "patient_id", "study_id", "study_description",
+            "study_date", "acquisition_date", "protocol", "modality", "series_number",
+            "series_description", "series_instance_uid", "nii_path"
+        ]
+
+        # Create an empty DataFrame
+        df = pd.DataFrame(columns=headers)
+
+        # Assuming `manager.df_dicom` is available
+        rows = []
+        for i, (sid, series) in enumerate(manager.df_dicom, start=1):
+            row = series.iloc[0]
+            
+            nii_path = f"{row['PatientID']}/{row['Modality']}/{row['StudyDate']}/{row['SeriesNumber']}_{row['SeriesDescription']}/image.nii.gz"
+            
+            # Collect data in a list of dictionaries
+            rows.append({
+                "id": i,
+                "patient_name": row["PatientName"],
+                "patient_id": row["PatientID"],
+                "study_id": row["StudyID"],
+                "study_description": row["StudyDescription"],
+                "study_date": row["StudyDate"],
+                "acquisition_date": row["AcquisitionDate"],
+                "protocol": row["ProtocolName"],
+                "modality": row["Modality"],
+                "series_number": row["SeriesNumber"],
+                "series_description": row["SeriesDescription"],
+                "series_instance_uid": row["SeriesInstanceUID"],
+                "nii_path": nii_path
+            })
+
+        # Convert list of dictionaries to DataFrame
+        df = pd.DataFrame(rows, columns=headers)
+
+        # Define the file path
+        file_path = Path(output_dir.split('$')[0]) / "organized_dicoms_output.csv"
+
+        # Save the DataFrame to CSV
+        df.to_csv(file_path, index=False)         
+        
+        
+    logger.info("DICOM organization process completed.")
         
     return dict_results_folder_export, dict_results_nii_export
     
@@ -164,6 +214,12 @@ def main():
         nargs='*', 
         help="Filters in the format key1=value1 key2=value2 ..."
     )
+    
+    parser.add_argument(
+        "--save_csv",
+        action="store_true",
+        help="Save the output as a CSV"
+    )
 
     args = parser.parse_args()
 
@@ -176,7 +232,8 @@ def main():
         log_dir=args.log_dir,
         num_workers=args.num_workers,
         save_output_json=args.save_output_json,
-        filters=args.filters
+        filters=args.filters,
+        save_csv=args.save_csv
     )
 
 if __name__ == "__main__":
