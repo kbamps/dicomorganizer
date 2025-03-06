@@ -87,6 +87,8 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
                 "nii_export": dict_results_nii_export
             }, json_file, indent=4)
         logger.info(f"Output results saved to {json_output_path}")
+        
+    return dict_results_folder_export, dict_results_nii_export
     
 def main():
     # Setup argument parser

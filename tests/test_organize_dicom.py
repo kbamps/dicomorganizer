@@ -27,7 +27,7 @@ class TestOrganizeDicom(unittest.TestCase):
         #         pickle.dump(self.manager, f)
 
     def tearDown(self):
-        # Clean up output and log directories after tests
+        # Clean up output and log dscirectories after tests
         if os.path.exists(self.output_dir):
             shutil.rmtree(self.output_dir)
         if os.path.exists(self.log_dir):
