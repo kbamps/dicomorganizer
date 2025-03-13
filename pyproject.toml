@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dicomorganizer"
-version = "0.4.4" 
+version = "0.5.0"
 description = "A package to manage, process, and anonymize DICOM files."
 readme = "README.md"
 authors = [{name = "Kobe Bamps", email = "kobe.bamps@uzleuven.be"}]
@@ -22,6 +22,8 @@ Homepage = "https://github.com/kbamps/dicomorganizer"
 [dependencies]
 pydicom = ">=2.0.0"
 tqdm = "4.67.1"
+pandas
+
 
 [project.scripts]
 dicomanonymizer = "dicomorganizer.apps.cli.anonymizer:main"
