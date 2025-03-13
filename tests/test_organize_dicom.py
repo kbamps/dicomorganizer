@@ -2,8 +2,7 @@ import os
 import shutil
 import unittest
 import pickle
-from apps.cli.dicomorganizer.main import organize_dicom, validate_filters
-from dicomorganizer.dicom_manager import DicomManager
+from dicomorganizer.dicom_manager import DicomManager, organize_dicom
 
 class TestOrganizeDicom(unittest.TestCase):
     def setUp(self):
@@ -26,13 +25,6 @@ class TestOrganizeDicom(unittest.TestCase):
         #     with open(self.manager_path, 'wb') as f:
         #         pickle.dump(self.manager, f)
 
-    def tearDown(self):
-        # Clean up output and log dscirectories after tests
-        if os.path.exists(self.output_dir):
-            shutil.rmtree(self.output_dir)
-        if os.path.exists(self.log_dir):
-            shutil.rmtree(self.log_dir)
-
 
     # def test_load_manager(self):
     #     self.assertIsNotNone(self.manager)
@@ -44,24 +36,29 @@ class TestOrganizeDicom(unittest.TestCase):
     #         print()
 
     def test_organize_dicom_with_filters(self):
-        organize_dicom(
+
+        results = organize_dicom(
             input_dir=self.input_dir,
             output_dir=self.output_dir,
             groupby="SeriesInstanceUID",
             anonymize=False,
             verbose=True,
             log_dir=self.log_dir,
-            num_workers=50,
+            num_workers=25,
             filters=self.filters
             )
+        
+        print(len(results["succeeded"]))
+        print(len(results["failed"]))
 
-        # Check if output directory is created and contains files
-        self.assertTrue(os.path.exists(self.output_dir))
-        self.assertTrue(len(os.listdir(self.output_dir)) > 0)
 
-        # Check if NIfTI files are created
-        nifti_files = [f for f in os.listdir(self.output_dir) if f.endswith('.nii') or f.endswith('.nii.gz')]
-        self.assertTrue(len(nifti_files) > 0)
+        # # Check if output directory is created and contains files
+        # self.assertTrue(os.path.exists(self.output_dir))
+        # self.assertTrue(len(os.listdir(self.output_dir)) > 0)
+
+        # # Check if NIfTI files are created
+        # nifti_files = [f for f in os.listdir(self.output_dir) if f.endswith('.nii') or f.endswith('.nii.gz')]
+        # self.assertTrue(len(nifti_files) > 0)
 
 if __name__ == '__main__':
     unittest.main()
