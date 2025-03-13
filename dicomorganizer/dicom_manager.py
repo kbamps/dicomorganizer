@@ -330,7 +330,7 @@ class DicomManager:
         paths = []
         failed_files = []
 
-        for idx, row in self.df_dicom.obj.iterrows():
+        for idx, row in tqdm.tqdm(self.df_dicom.obj.iterrows(), total=len(self.df_dicom.obj), desc="Exporting DICOM files"):
             try:
                 dicom_path = row['filename']
                 dicom_data = row.to_dict()
@@ -343,7 +343,7 @@ class DicomManager:
                 dicom_data['filename'] = output_file
                 paths.append(dicom_data)
             except Exception as e:
-                failed_files.append((e,dicom_path))
+                failed_files.append((e, dicom_path))
                 print(f"Failed to export {dicom_path}:\n => {e}")
 
         return {'succeeded': paths, 'failed': failed_files}

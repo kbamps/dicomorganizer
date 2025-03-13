@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import sys
 import re
-from turtle import pd
+import pandas as pd
 from apps.cli.utils import log_config
 from dicomorganizer import DicomManager
 from pydicom.datadict import tag_for_keyword, keyword_for_tag
