@@ -22,11 +22,10 @@ Homepage = "https://github.com/kbamps/dicomorganizer"
 [dependencies]
 pydicom = ">=2.0.0"
 tqdm = "4.67.1"
-pandas
+pandas = "2.2.3"
 
 
 [project.scripts]
-dicomanonymizer = "dicomorganizer.apps.cli.anonymizer:main"
-dicomorganizer = "dicomorganizer.apps.cli.dicomorganizer:main"
+dicom-organizer = "dicomorganizer.apps.cli.dicomorganizer:main"
 
 
