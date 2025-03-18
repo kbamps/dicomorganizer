@@ -1,8 +1,10 @@
 import concurrent.futures
 import re
-import sys
+import sys, os
 from tqdm import tqdm
 import logging
+
+# Pool =  #concurrent.futures.ThreadPoolExecutor #if os.name == 'nt' else concurrent.futures.ProcessPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,16 @@ def parallel_tasks(function, arguments_list, num_workers=1, description="process
     disabled = not show_bar
     results_list = [None] * len(arguments_list)  # Preallocate the result list
     total_tasks = len(arguments_list)
-    num_workers = min(len(arguments_list), num_workers or 1)
-    
+    if num_workers is None:
+        force_single_thread = True
+    else:
+        num_workers = min(len(arguments_list), num_workers or 1)
+    # Pool = concurrent.futures.ThreadPoolExecutor if os.name == 'nt' else concurrent.futures.ProcessPoolExecutor
+    Pool = concurrent.futures.ProcessPoolExecutor
+
     with tqdm(total=total_tasks, desc=description, unit="item", disable=disabled) as pbar:
         if not force_single_thread:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            with Pool(max_workers=num_workers) as executor:
                 futures = {executor.submit(function, *args): idx for idx, args in enumerate(arguments_list)}
                 
                 for future in concurrent.futures.as_completed(futures):

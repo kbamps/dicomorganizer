@@ -1,8 +1,16 @@
 import logging
 import os
+from pathlib import Path
+import re
+import shutil
+import numpy as np
 import pandas as pd
 import pydicom
-
+# from dicom2nifti.convert_dicom import dicom_array_to_nifti
+# import nibabel as nib
+# import dicom2nifti
+import pickle
+from dicomorganizer import log_config
 from dicomorganizer.utils import extract_format, parallel_tasks
 
 class DicomManager:
@@ -17,9 +25,9 @@ class DicomManager:
     """
 
     DEFAULT_DICOM_TAGS = [
-        "PatientName", "PatientID", "StudyID", "StudyDate", 
+        "PatientName", "PatientID", "StudyID", "StudyDate", "StudyDescription", "AcquisitionDate","ProtocolName",
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
-        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription"
+        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber"
     ]
     
     CLEAR_TAGS = [
@@ -309,8 +317,187 @@ class DicomManager:
             else:
                 print(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None
+        
+    
+    def export_to_folder_structure(self, output_path, num_workers=None):
+        """
+        Exports the DICOM files to a folder structure based on the metadata.
+
+        Args:
+            output_path (str): Path to the directory where the files will be exported.
+            num_workers (int, optional): Number of workers for parallel processing. If None, runs sequentially.
+        """
+        paths = []
+        failed_files = []
+
+        arg_list = [(output_path, r) for r in self.df_dicom.obj.to_dict(orient="records")]
+        results = parallel_tasks(export_single_file, arg_list, num_workers, description="Copying DICOM files")
+
+        for result in results:
+            if "succeeded" in result:
+                paths.append(result["succeeded"])
+            elif "failed" in result:
+                failed_files.append(result["failed"])        
+
+        return {'succeeded': paths, 'failed': failed_files}
+
+    # def export_to_nifti(self, output_path, folder_exists=False):
+    #     """
+    #     Exports the DICOM files to NIFTI format.
+    #     Args:
+    #         output_path (str): Path to the directory where the files will be exported.
+    #     """
+    #     if not isinstance(self.df_dicom, pd.core.groupby.DataFrameGroupBy):
+    #         raise ValueError("Cannot export to NIFTI format without grouping the DICOM files.")
+        
+    #     converted_files =  []
+    #     failed_files = []
+        
+    #     for group, df_group in tqdm.tqdm(self.df_dicom, desc="Converting DICOMs to NIFTI"):
+    #         try:
+    #             dicom_data = df_group.iloc[0].to_dict()
+    #             read_path_format = extract_format(output_path + "/DCM", dicom_data)
+    #             output_path_format = extract_format(output_path, dicom_data)
+    #             output_file = os.path.join(output_path_format, f"image.nii.gz")
+
+    #             if folder_exists:
+    #                 convert_result = dicom2nifti.dicom_series_to_nifti(read_path_format, output_file, reorient_nifti=False)
+    #             else:
+    #                 dicom_array = [pydicom.dcmread(dicom_path) for dicom_path in df_group['filename'].tolist()]
+    #                 convert_result = dicom_array_to_nifti(dicom_array, output_file, reorient_nifti=False)
+                
+                
+    #             # swap axes 
+    #             # if convert_result is not None:
+    #             #     nii = np.transpose(convert_result['NII'].get_fdata(), (1,2,3,0))
+    #             #     affine = convert_result['NII'].affine
+    #             #     convert_result['NII'] = nib.Nifti1Image(nii, affine)
+    #             #     nib.save(convert_result['NII'], output_file)
+                
+    #             dicom_data['nii_path'] = convert_result["NII_FILE"]
+    #             dicom_data.pop('filename', None)
+    #             converted_files.append(dicom_data)
+                    
+    #         except Exception as e:
+    #             print(f"Failed to convert DICOMs to NIFTI:\n => {e}")
+    #             failed_files.append((e, group))
+
+    #     return {'succeeded': converted_files, 'failed': failed_files}
+
+    def save(self, output_path):
+        """
+        Saves the complete DicomManager model to a pickle file.
+
+        Args:
+            output_path (str): Path to the output pickle file.
+        """
+        with open(output_path, 'wb') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(input_path):
+        """
+        Loads the complete DicomManager model from a pickle file.
+
+        Args:
+            input_path (str): Path to the input pickle file.
+
+        Returns:
+            DicomManager: The loaded DicomManager instance.
+        """
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"The file '{input_path}' does not exist.")
+        
+        with open(input_path, 'rb') as f:
+            return pickle.load(f)
+
+def validate_filters(filters):
+    valid_filters = {}
+    for filter in filters:
+        if '=' not in filter:
+            raise ValueError(f"Filter '{filter}' is not in the correct format key=value.")
+        key, value = filter.split('=', 1)
+        try:
+            valid_filters[key] = re.compile(value)
+        except re.error as e:
+            raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
+    return valid_filters
+        
+def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None):
+    # Initialize logging
+    logger = log_config.setup_logging(log_dir)
+
+    # Debug: Print arguments if verbose mode is on
+    if verbose:
+        logger.info("Arguments Received:")
+        logger.info(f"      Input Directory: {input_dir}")
+        logger.info(f"      Output Directory: {output_dir}")
+        logger.info(f"      Group by: {groupby}")
+        logger.info(f"      Anonymize: {anonymize}")
+        logger.info(f"      Verbose Mode: {verbose}")
+        logger.info(f"      Number of Workers: {num_workers}")
+        logger.info(f"      Filters: {filters}")
+
+    # Validate filters
+    try:
+        filters = validate_filters(filters) if filters else {}
+    except ValueError as e:
+        logger.error(str(e))
+        return
+
+    # Check if paths exist
+    if not os.path.exists(input_dir):
+        logger.error(f"Input path '{input_dir}' does not exist.")
+        return
+
+    # check if groupby parameters is in tags of DicomManager
+    if groupby not in DicomManager.DEFAULT_DICOM_TAGS:
+        logger.error(f"Group by parameter '{groupby}' is not a valid tag.\nValid tags are: {DicomManager.DEFAULT_DICOM_TAGS}")
+        return
+
+    # Start the DICOM organization process
+    logger.info("Starting DICOM organization process...")
+    manager = DicomManager(directory=input_dir, group_by=groupby, num_workers=num_workers)
+    
+    # Apply filters
+    if filters:
+        def filter_by(row):
+            for key, regex in filters.items():
+                value = row.get(key, None)  # Get value, default to empty string
+            
+                if  value is None:  # If value is None or empty string
+                    return False  
+                
+                if not regex.search(value):  # If regex does NOT match
+                    return False  # Row does not match filter criteria
+
+            return True
+        
+        manager.filter(filter_by)
+    
+    # Organize the DICOM files
+    results = manager.export_to_folder_structure(output_dir + "/DCM", num_workers)
+
+    # transform to nifti 
+    # manager.export_to_nifti(output_dir, folder_exists=True)
+    return results
 
 
+def export_single_file(output_path, row):
+    try:
+        dicom_path = Path(row['filename'])
+        dicom_data = row
+        output_path_formatted = Path(extract_format(output_path, dicom_data))
+        name = dicom_path.name
+        output_path_formatted.mkdir(parents=True, exist_ok=True)
+        output_file = output_path_formatted / name
+        shutil.copy(dicom_path.as_posix(), output_file.as_posix())
+
+        dicom_data['filename'] = output_file.as_posix()
+        return {"succeeded": output_file}
+    except Exception as e:
+        return {"failed": (e, dicom_path)}
+            
 
 if __name__ == '__main__':
     pass

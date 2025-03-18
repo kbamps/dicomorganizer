@@ -3,7 +3,7 @@ import csv
 import os
 import sys
 from __VERSION__ import __VERSION__
-import log_config as log_config
+import dicomorganizer.log_config as log_config
 from dicomorganizer import DicomManager
 from pydicom.datadict import tag_for_keyword, keyword_for_tag
 
