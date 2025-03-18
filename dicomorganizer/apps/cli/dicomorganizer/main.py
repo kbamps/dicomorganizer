@@ -1,12 +1,13 @@
 import argparse
 import multiprocessing
 
-
 def main():
     # Setup argument parser
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         description=f"""
+        DicomOrganizer
+        
         Load DICOM files and sort them by the specified grouping parameter (default: series ID).
         Instances are saved to the output folder with the structure:
           id/studydate/series_description/
