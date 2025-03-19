@@ -112,6 +112,72 @@ def extract_format(format_file, dict_format=None):
         output_file = output_file.replace(" ", "_")
         return output_file
 
+def validate_filters(filters):
+    """
+    Validates and compiles a list of filter strings into a dictionary of regular expressions.
+
+    Args:
+        filters (list): A list of strings in the format "key=value", where `key` is the filter key
+                        and `value` is a regular expression pattern.
+
+    Returns:
+        dict: A dictionary where keys are filter keys and values are compiled regular expressions.
+
+    Raises:
+        ValueError: If a filter string is not in the correct format "key=value" or if the regular
+                    expression is invalid.
+    """
+    valid_filters = {}
+    for filter in filters:
+        if '=' not in filter:
+            raise ValueError(f"Filter '{filter}' is not in the correct format key=value.")
+        key, value = filter.split('=', 1)
+        try:
+            valid_filters[key] = re.compile(value)
+        except re.error as e:
+            raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
+    return valid_filters
+
+def create_dicommanager_filter(filters):
+    """
+    Creates a DICOM filter function from a string in the format ["key1=value1","key2=value2", ...]
+    or from a pre-validated dictionary of filters.
+    Example: ['SeriesDescription=^sRLT_(66B|66|50B|50|25B|25|REST|RUST)(?!_FLOW)$', ...]
+
+    Args:
+        filters (list or dict): A list of strings containing key-value pairs in the format key=value,
+                                or a dictionary where keys are filter keys and values are compiled
+                                regular expressions.
+
+    Returns:
+        function: A function `filter_by(row)` that takes a dictionary `row` and returns True if the row matches the filters, False otherwise.
+    """
+    # Skip validation if filters is already a dictionary
+    if not isinstance(filters, dict):
+        filters = validate_filters(filters)
+
+    def filter_by(row):
+        """
+        Filters a row based on the compiled filters.
+
+        Args:
+            row (dict): A dictionary representing a row of data.
+
+        Returns:
+            bool: True if the row matches all filters, False otherwise.
+        """
+        for key, regex in filters.items():
+            value = row.get(key, None)  # Get value, default to None
+            
+            if value is None:  # If value is None
+                return False  
+            
+            if not regex.search(str(value)):  # Convert value to string before regex search
+                return False  # Row does not match filter criteria
+
+        return True
+
+    return filter_by
 
 if __name__ == '__main__':
     pass
