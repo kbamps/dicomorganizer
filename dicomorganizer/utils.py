@@ -138,19 +138,23 @@ def validate_filters(filters):
             raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
     return valid_filters
 
-def create_dicommanager_filter(filter_str):
+def create_dicommanager_filter(filters):
     """
-    Creates a DICOM filter function from a string in the format ["key1=value1","key2=value2", ...].
+    Creates a DICOM filter function from a string in the format ["key1=value1","key2=value2", ...]
+    or from a pre-validated dictionary of filters.
     Example: ['SeriesDescription=^sRLT_(66B|66|50B|50|25B|25|REST|RUST)(?!_FLOW)$', ...]
 
     Args:
-        filter_str (list): A list of strings containing key-value pairs in the format key=value.
+        filters (list or dict): A list of strings containing key-value pairs in the format key=value,
+                                or a dictionary where keys are filter keys and values are compiled
+                                regular expressions.
 
     Returns:
         function: A function `filter_by(row)` that takes a dictionary `row` and returns True if the row matches the filters, False otherwise.
     """
-    # Validate and compile the filters
-    filters = validate_filters(filter_str)
+    # Skip validation if filters is already a dictionary
+    if not isinstance(filters, dict):
+        filters = validate_filters(filters)
 
     def filter_by(row):
         """
