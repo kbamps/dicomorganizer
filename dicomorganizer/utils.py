@@ -110,7 +110,7 @@ def extract_format(format_file, dict_format=None):
             
         
         output_file = output_file.replace(" ", "_")
-        return 
+        return output_file
 
 def validate_filters(filters):
     """
@@ -172,7 +172,7 @@ def create_dicommanager_filter(filters):
             if value is None:  # If value is None
                 return False  
             
-            if not regex.search(value):  # If regex does NOT match
+            if not regex.search(str(value)):  # Convert value to string before regex search
                 return False  # Row does not match filter criteria
 
         return True
