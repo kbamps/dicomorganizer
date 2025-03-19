@@ -484,10 +484,11 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
 
 
 def export_single_file(output_path, row):
+    output_path = Path(output_path)
     try:
         dicom_path = Path(row['filename'])
         dicom_data = row
-        output_path_formatted = Path(extract_format(output_path, dicom_data))
+        output_path_formatted = Path(extract_format(output_path.as_posix(), dicom_data))
         name = dicom_path.name
         output_path_formatted.mkdir(parents=True, exist_ok=True)
         output_file = output_path_formatted / name
