@@ -1,6 +1,5 @@
 import concurrent.futures
 import re
-import sys, os
 from tqdm import tqdm
 import logging
 
