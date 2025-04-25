@@ -11,7 +11,7 @@ import pydicom
 # import dicom2nifti
 import pickle
 from dicomorganizer import log_config
-from dicomorganizer.utils import extract_format, parallel_tasks
+from dicomorganizer.utils import create_dicommanager_filter, extract_format, parallel_tasks, validate_filters
 
 class DicomManager:
     """
@@ -411,17 +411,7 @@ class DicomManager:
         with open(input_path, 'rb') as f:
             return pickle.load(f)
 
-def validate_filters(filters):
-    valid_filters = {}
-    for filter in filters:
-        if '=' not in filter:
-            raise ValueError(f"Filter '{filter}' is not in the correct format key=value.")
-        key, value = filter.split('=', 1)
-        try:
-            valid_filters[key] = re.compile(value)
-        except re.error as e:
-            raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
-    return valid_filters
+
         
 def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None):
     # Initialize logging
@@ -461,18 +451,7 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
     
     # Apply filters
     if filters:
-        def filter_by(row):
-            for key, regex in filters.items():
-                value = row.get(key, None)  # Get value, default to empty string
-            
-                if  value is None:  # If value is None or empty string
-                    return False  
-                
-                if not regex.search(value):  # If regex does NOT match
-                    return False  # Row does not match filter criteria
-
-            return True
-        
+        filter_by = create_dicommanager_filter(filters)
         manager.filter(filter_by)
     
     # Organize the DICOM files
@@ -484,10 +463,11 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
 
 
 def export_single_file(output_path, row):
+    output_path = Path(output_path)
     try:
         dicom_path = Path(row['filename'])
         dicom_data = row
-        output_path_formatted = Path(extract_format(output_path, dicom_data))
+        output_path_formatted = Path(extract_format(output_path.as_posix(), dicom_data))
         name = dicom_path.name
         output_path_formatted.mkdir(parents=True, exist_ok=True)
         output_file = output_path_formatted / name
