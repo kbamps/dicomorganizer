@@ -91,7 +91,8 @@ def main():
         verbose=args.verbose,
         log_dir=args.log_dir,
         num_workers=args.num_workers,
-        filters=args.filters
+        filters=args.filters,
+        scan_mode=args.scan,
     )
 
 if __name__ == "__main__":
