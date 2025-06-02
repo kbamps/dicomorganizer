@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from pathlib import Path
@@ -24,7 +25,7 @@ class DicomManager:
         CLEAR_TAGS (list): Tags that can be cleared to anonymize DICOM files.
     """
 
-    DEFAULT_DICOM_TAGS = [
+     = [
         "PatientName", "PatientID", "StudyID", "StudyDate", "StudyDescription", "AcquisitionDate","ProtocolName",
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
         "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber"
@@ -423,7 +424,7 @@ def validate_filters(filters):
             raise ValueError(f"Invalid regular expression '{value}' for key '{key}': {e}")
     return valid_filters
         
-def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None):
+def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None, scan_mode=False):
     # Initialize logging
     logger = log_config.setup_logging(log_dir)
 
@@ -474,6 +475,31 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
             return True
         
         manager.filter(filter_by)
+
+    # if scan mode is enabled, print the summary and exit
+    if scan_mode:
+        logger.info("Scan mode enabled. Printing summary of DICOM files...")
+        df_dicom = manager.df_dicom
+
+        # Group by the groupby parameter and collect all rows as dicts
+        if isinstance(df_dicom, pd.core.groupby.DataFrameGroupBy):
+            groups = []
+            for group_name, group_df in df_dicom:
+                group_info = {
+                    "group": group_name,
+                    "items": group_df[DicomManager.DEFAULT_DICOM_TAGS + ["filename"]].to_dict(orient="records")
+                }
+                groups.append(group_info)
+        else:
+            # If not grouped, treat all as one group
+            groups = [{
+                "group": None,
+                "items": df_dicom[DicomManager.DEFAULT_DICOM_TAGS + ["filename"]].to_dict(orient="records")
+            }]
+        
+        print(json.dumps(groups, indent=2, default=str))
+        logger.info(f"Total DICOM files found: {len(df_dicom)}")
+        return
     
     # Organize the DICOM files
     results = manager.export_to_folder_structure(output_dir + "/DCM", num_workers)
