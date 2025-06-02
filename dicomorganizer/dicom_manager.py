@@ -484,19 +484,15 @@ def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize
         # Group by the groupby parameter and collect all rows as dicts
         if isinstance(df_dicom, pd.core.groupby.DataFrameGroupBy):
             groups = []
-            for group_name, group_df in df_dicom:
-                group_info = {
-                    "group": group_name,
-                    "items": group_df[DicomManager.DEFAULT_DICOM_TAGS + ["filename"]].to_dict(orient="records")
-                }
-                groups.append(group_info)
+            # aggregate the grouped DataFrame into a list of dictionaries
+            # each record will contain the first of the groupby column
+            df_group_level = df_dicom.first().reset_index()
+            for index, row in df_group_level.iterrows():
+                groups.append(row.to_dict())
         else:
             # If not grouped, treat all as one group
-            groups = [{
-                "group": None,
-                "items": df_dicom[DicomManager.DEFAULT_DICOM_TAGS + ["filename"]].to_dict(orient="records")
-            }]
-        
+            groups = df_dicom[DicomManager.DEFAULT_DICOM_TAGS].to_dict(orient="records")
+            
         print(json.dumps(groups, indent=2, default=str))
         logger.info(f"Total DICOM files found: {len(df_dicom)}")
         return
