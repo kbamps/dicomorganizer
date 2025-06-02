@@ -73,6 +73,12 @@ def main():
 
     parser.add_argument("--multiprocessing", action="store_true", help="Enable multiprocessing")
 
+    parser.add_argument(
+        "--scan", "-scan",
+        action="store_true",
+        help="Scan the input directory and print a summary without organizing."
+    )
+
     args = parser.parse_args()
 
     from dicomorganizer.dicom_manager import organize_dicom
@@ -85,7 +91,8 @@ def main():
         verbose=args.verbose,
         log_dir=args.log_dir,
         num_workers=args.num_workers,
-        filters=args.filters
+        filters=args.filters,
+        scan_mode=args.scan,
     )
 
 if __name__ == "__main__":
