@@ -25,7 +25,7 @@ class DicomManager:
         CLEAR_TAGS (list): Tags that can be cleared to anonymize DICOM files.
     """
 
-     = [
+    DEFAULT_DICOM_TAGS = [
         "PatientName", "PatientID", "StudyID", "StudyDate", "StudyDescription", "AcquisitionDate","ProtocolName",
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
         "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber"
