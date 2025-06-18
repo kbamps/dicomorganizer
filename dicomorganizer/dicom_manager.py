@@ -7,12 +7,10 @@ import shutil
 import numpy as np
 import pandas as pd
 import pydicom
-# from dicom2nifti.convert_dicom import dicom_array_to_nifti
-# import nibabel as nib
-# import dicom2nifti
 import pickle
-from dicomorganizer import log_config
 from dicomorganizer.utils import create_dicommanager_filter, extract_format, parallel_tasks, validate_filters
+
+logger = logging.getLogger(__name__)
 
 class DicomManager:
     """
@@ -312,11 +310,7 @@ class DicomManager:
             
             return output_path
         except Exception as e:
-            if logging.getLogger().hasHandlers():
-                logger = logging.getLogger()
-                logger.error(f"Failed to anonymize {dicom_path}:\n => {e}")
-            else:
-                print(f"Failed to anonymize {dicom_path}:\n => {e}")
+            logger.error(f"Failed to anonymize {dicom_path}:\n => {e}")
             return None
         
     
@@ -416,7 +410,7 @@ class DicomManager:
         
 def organize_dicom(input_dir, output_dir, groupby="SeriesInstanceUID", anonymize=False, verbose=False, log_dir="logs", num_workers=1, filters=None, scan_mode=False):
     # Initialize logging
-    logger = log_config.setup_logging(log_dir)
+    # logger = log_config.setup_logging(log_dir)  # Remove this line
 
     # Debug: Print arguments if verbose mode is on
     if verbose:
