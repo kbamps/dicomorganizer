@@ -27,7 +27,7 @@ class DicomManager:
     DEFAULT_DICOM_TAGS = [
         "PatientName", "PatientID", "StudyID", "StudyDate", "StudyDescription", "AcquisitionDate","ProtocolName",
         "SOPInstanceUID", "SeriesInstanceUID", "Modality", 
-        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber"
+        "BurnedInAnnotation", "SOPClassUID", "StudyInstanceUID", "SeriesDescription", "SeriesNumber","InstanceNumber","Manufacturer",
     ]
     
     CLEAR_TAGS = [
