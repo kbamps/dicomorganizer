@@ -1,5 +1,6 @@
 import argparse
 import multiprocessing
+import threading
 
 def main():
     # Setup argument parser
@@ -73,20 +74,50 @@ def main():
 
     parser.add_argument("--multiprocessing", action="store_true", help="Enable multiprocessing")
 
+    parser.add_argument(
+        "--scan", "-scan",
+        action="store_true",
+        help="Scan the input directory and print a summary without organizing."
+    )
+
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Launch the GUI log display and run organize_dicom in a background thread."
+    )
+
     args = parser.parse_args()
 
     from dicomorganizer.dicom_manager import organize_dicom
     
-    organize_dicom(
-        input_dir=args.input_dir,
-        output_dir=args.output_dir,
-        groupby=args.groupby,
-        anonymize=args.anonymize,
-        verbose=args.verbose,
-        log_dir=args.log_dir,
-        num_workers=args.num_workers,
-        filters=args.filters
-    )
+    if args.gui:
+        from dicomorganizer.apps.cli.dicomorganizer.gui import create_log_display
+
+        def run_organize():
+            organize_dicom(
+                input_dir=args.input_dir,
+                output_dir=args.output_dir,
+                groupby=args.groupby,
+                anonymize=args.anonymize,
+                verbose=args.verbose,
+                log_dir=args.log_dir,
+                num_workers=args.num_workers,
+                filters=args.filters,
+                scan_mode=args.scan,
+            )
+        create_log_display(run_organize)
+    else:
+        organize_dicom(
+            input_dir=args.input_dir,
+            output_dir=args.output_dir,
+            groupby=args.groupby,
+            anonymize=args.anonymize,
+            verbose=args.verbose,
+            log_dir=args.log_dir,
+            num_workers=args.num_workers,
+            filters=args.filters,
+            scan_mode=args.scan,
+        )
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
