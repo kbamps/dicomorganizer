@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import sqlite3
 import numpy as np
 import pandas as pd
 import pydicom
@@ -220,7 +221,8 @@ class DicomManager:
         args_list = [(path, tags) for path in dicom_paths]
         
         if num_workers is None:
-            return [self._get_single_dicom_info(*args) for args in args_list]
+            result =  [self._get_single_dicom_info(*args) for args in args_list]
+            return [r for r in result if r is not None]
         
         results = parallel_tasks(self._get_single_dicom_info, args_list, num_workers, description="Reading DICOM files")
         return [r for r in results if r is not None]
@@ -379,6 +381,56 @@ class DicomManager:
 
     #     return {'succeeded': converted_files, 'failed': failed_files}
 
+
+    def to_sqlfile(self, dbfile, columns=["patient_name", "patient_id", "study_id", "study_date", "study_description", "acquisition_date", "protocol", "modality", "series_description", "series_number","series_instance_uid"]):
+        """
+        Converts the DicomManager instance to a SQL file.
+
+        Args:
+            file (str): Path to the output SQL file.
+            columns (list): List of columns to include in the SQL file.
+        """
+        # Mapping from DICOM tags to desired column names
+        tag_map = {
+            "PatientName": "patient_name",
+            "PatientID": "patient_id",
+            "StudyID": "study_id",
+            "StudyDate": "study_date",
+            "StudyDescription": "study_description",
+            "AcquisitionDate": "acquisition_date",
+            "ProtocolName": "protocol",
+            "Modality": "modality",
+            "SeriesDescription": "series_description",
+            "SeriesNumber": "series_number",
+            "SeriesInstanceUID": "series_instance_uid"
+        }
+
+        this_dir = Path(__file__).resolve().parent
+        db_template = this_dir / "patients.db"
+
+        dbfile = Path(dbfile)
+
+        if not dbfile.exists():
+            shutil.copy(db_template, dbfile)
+
+        # Rename and subset
+        df_renamed =self.df_dicom.first().reset_index().rename(columns=tag_map)
+        df_subset = df_renamed[list(tag_map.values())]
+        df_subset = df_subset.astype(str)
+        df_subset["series_description"] = df_subset["series_description"].str.replace(" ","_")
+        df_subset["nii_path"] = (
+            df_subset["patient_id"] + "/" +
+            df_subset["modality"] + "/" +
+            df_subset["study_date"] + "/" +
+            df_subset["series_number"] + "_" + df_subset["series_description"] +
+            "/image.nii.gz"
+        )
+        
+        # Append to SQL
+        conn = sqlite3.connect(dbfile) 
+        df_subset.to_sql("patients", conn, if_exists="append", index=False)
+        conn.close()
+
     def save(self, output_path):
         """
         Saves the complete DicomManager model to a pickle file.
@@ -496,4 +548,8 @@ def export_single_file(output_path, row):
             
 
 if __name__ == '__main__':
+    # %%
+    manager = DicomManager(directory="/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/data/excmr/Exc_validation_cohort/pred/P@H-BE", group_by="SeriesInstanceUID",num_workers=None)
+    # %%
+    manager.to_sqlfile("/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/projects/2024_excmr/libs/dicomorganizer/tests/patients.db")
     pass
