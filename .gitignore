@@ -166,3 +166,4 @@ cython_debug/
 
 output/
 tests/data
+tests/patients.db
