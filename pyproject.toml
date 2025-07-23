@@ -8,7 +8,7 @@ version = "0.5.2"
 description = "A package to manage, process, and anonymize DICOM files."
 readme = "README.md"
 authors = [{name = "Kobe Bamps", email = "kobe.bamps@uzleuven.be"}]
-license = {text = "MIT"}  # Adjust to match your actual license
+license = {text = "MIT"}
 requires-python = ">=3.6"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -16,16 +16,16 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+dependencies = [
+  "pydicom>=2.0.0",
+  "tqdm>=4.67.1",
+  "pandas>=2.2.3"
+]
+
+
 [project.urls]
 Homepage = "https://github.com/kbamps/dicomorganizer"
-
-[dependencies]
-pydicom = ">=2.0.0"
-tqdm = "4.67.1"
-pandas = "2.2.3"
 
 
 [project.scripts]
 dicom-organizer = "dicomorganizer.apps.cli.dicomorganizer:main"
-
-

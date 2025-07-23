@@ -418,13 +418,22 @@ class DicomManager:
         df_subset = df_renamed[list(tag_map.values())]
         df_subset = df_subset.astype(str)
         df_subset["series_description"] = df_subset["series_description"].str.replace(" ","_")
-        df_subset["nii_path"] = (
-            df_subset["patient_id"] + "/" +
-            df_subset["modality"] + "/" +
-            df_subset["study_date"] + "/" +
-            df_subset["series_number"] + "_" + df_subset["series_description"] +
-            "/image.nii.gz"
-        )
+        if df_renamed["Manufacturer"].iloc[0] == "SIEMENS":
+            df_subset["nii_path"] = (
+                df_subset["patient_id"] + "/" +
+                df_subset["modality"] + "/" +
+                df_subset["study_date"] + "/" +
+                df_subset["series_description"] + "/" +
+                "image.nii.gz"
+            )
+        else:
+            df_subset["nii_path"] = (
+                df_subset["patient_id"] + "/" +
+                df_subset["modality"] + "/" +
+                df_subset["study_date"] + "/" +
+                df_subset["series_number"] + "_" + df_subset["series_description"] +
+                "/image.nii.gz"
+            )
         
         # Append to SQL
         conn = sqlite3.connect(dbfile) 
@@ -549,7 +558,7 @@ def export_single_file(output_path, row):
 
 if __name__ == '__main__':
     # %%
-    manager = DicomManager(directory="/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/data/excmr/Exc_validation_cohort/pred/P@H-BE", group_by="SeriesInstanceUID",num_workers=None)
+    manager = DicomManager(directory="/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/data/excmr/Exc_validation_cohort/pred/BREXIT", group_by=["SeriesDescription", "PatientID"],num_workers=30)
     # %%
     manager.to_sqlfile("/DATASERVER/MIC/GENERAL/STAFF/kbamps4/workspace/projects/2024_excmr/libs/dicomorganizer/tests/patients.db")
     pass
