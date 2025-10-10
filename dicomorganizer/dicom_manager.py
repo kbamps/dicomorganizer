@@ -193,7 +193,7 @@ class DicomManager:
         
         if group_by is not None:
             # Check if group_by columns are present in DICOM metadata
-            group_by_list = group_by if isinstance(group_by, list) else list([group_by])
+            group_by_list = group_by if isinstance(group_by, (list, tuple)) else list([group_by])
             col_check = [col in df_dicom.columns for col in group_by_list]
             if not all(col_check):
                 error_message = ','.join([col_name for col_name, check in zip(group_by_list, col_check) if not check])
