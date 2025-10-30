@@ -10,6 +10,7 @@ import pandas as pd
 import pydicom
 import pickle
 from dicomorganizer.utils import create_dicommanager_filter, extract_format, parallel_tasks, validate_filters
+from pydicom.multival import MultiValue
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +263,15 @@ class DicomManager:
         except Exception as e:
             return {'error': str(e)}
 
-        dicom_info = {tag: dicom_data.get(tag, default_value) for tag in tags}
+
+        dicom_info = {
+            tag: (
+                " | ".join(map(str, value)) if isinstance(value, MultiValue) else value
+            )
+            for tag in tags
+            if (value := dicom_data.get(tag, default_value)) is not None
+        }
+
         dicom_info["filename"] = filepath
         return dicom_info
 
