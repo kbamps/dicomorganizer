@@ -10,6 +10,7 @@ import pandas as pd
 import pydicom
 import pickle
 from dicomorganizer.utils import create_dicommanager_filter, extract_format, parallel_tasks, validate_filters
+from pydicom.multival import MultiValue
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +194,7 @@ class DicomManager:
         
         if group_by is not None:
             # Check if group_by columns are present in DICOM metadata
-            group_by_list = group_by if isinstance(group_by, list) else list([group_by])
+            group_by_list = group_by if isinstance(group_by, (list, tuple)) else list([group_by])
             col_check = [col in df_dicom.columns for col in group_by_list]
             if not all(col_check):
                 error_message = ','.join([col_name for col_name, check in zip(group_by_list, col_check) if not check])
@@ -260,7 +261,15 @@ class DicomManager:
         except Exception as e:
             return {'error': str(e)}
 
-        dicom_info = {tag: dicom_data.get(tag, default_value) for tag in tags}
+
+        dicom_info = {
+            tag: (
+                " | ".join(map(str, value)) if isinstance(value, MultiValue) else value
+            )
+            for tag in tags
+            if (value := dicom_data.get(tag, default_value)) is not None
+        }
+
         dicom_info["filename"] = filepath
         return dicom_info
 
