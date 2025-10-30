@@ -227,21 +227,19 @@ class DicomManager:
         results = parallel_tasks(self._get_single_dicom_info, args_list, num_workers, description="Reading DICOM files")
         return [r for r in results if r is not None]
 
-    def _get_dicom_file_paths(self):
+    def _get_dicom_file_paths(self) -> list[str]:
         """
         Recursively collects all DICOM file paths from the specified directory (self.directory).
 
         Returns:
-            list[str]: A list of file paths pointing to DICOM files in the directory.
-                       Excludes files named 'DICOMDIR'.
+            list[str]: A list of file paths pointing to DICOM files in the directory,
+                    excluding any file named 'DICOMDIR' (case-insensitive).
         """
-        dicom_paths = []
-        for root, _, files in os.walk(self.directory):
-            for file in files:
-                if file.upper() == "DICOMDIR":
-                    continue
-                dicom_paths.append(os.path.join(root, file))
-        return dicom_paths
+        return [
+            str(path)
+            for path in Path(self.directory).rglob("*")
+            if path.is_file() and path.name.upper() != "DICOMDIR"
+        ]
 
     def _get_single_dicom_info(self, filepath, tags, default_value=None):
         """
