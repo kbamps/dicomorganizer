@@ -261,14 +261,14 @@ class DicomManager:
         except Exception as e:
             return {'error': str(e)}
 
-
-        dicom_info = {
-            tag: (
-                " | ".join(map(str, value)) if isinstance(value, MultiValue) else value
-            )
-            for tag in tags
-            if (value := dicom_data.get(tag, default_value)) is not None
-        }
+        # Extract all tags from DICOM, including empty ones (None)
+        dicom_info = {}
+        for tag in tags:
+            value = dicom_data.get(tag, default_value)
+            if isinstance(value, MultiValue):
+                dicom_info[tag] = " | ".join(map(str, value))
+            else:
+                dicom_info[tag] = value
 
         dicom_info["filename"] = filepath
         return dicom_info
