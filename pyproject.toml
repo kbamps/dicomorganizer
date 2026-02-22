@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dicomorganizer"
-version = "0.5.5"
+version = "0.5.6"
 description = "A package to manage, process, and anonymize DICOM files."
 readme = "README.md"
 authors = [{name = "Kobe Bamps", email = "kobe.bamps@uzleuven.be"}]
@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
   "pydicom>=2.0.0",
   "tqdm>=4.67.1",
-  "pandas>=2.2.3"
+  "pandas>=2.0.0"
 ]
 
 
